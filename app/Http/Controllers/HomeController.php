@@ -1,0 +1,78 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\slider;
+use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
+use Image;
+
+class HomeController extends Controller
+{
+    public function HomeSlider(){
+        $sliders=slider::latest()->get();
+        return view('admin.slider.index',compact('sliders'));
+    }
+
+    public function AddSlider(){
+        return view('admin.slider.addSlider');
+    }
+
+    public function StoreSlider(Request $request){
+        $slider_image=$request->file('image');
+
+        // store with intervention package start
+        $name_generate=hexdec(uniqid()).'.'.$slider_image->getClientOriginalExtension();
+        Image::make($slider_image)->resize(1920,1088)->save('image/slider/'.$name_generate);
+        // store with intervention package end
+        $last_img='image/slider/'.$name_generate;
+
+        slider::insert([
+            'title'=>$request->title,
+            'description'=>$request->description,
+            'image'=>$last_img,
+            'created_at'=>Carbon::now()
+        ]);
+        return Redirect()->route('home.slider');
+    }
+
+
+    public function EditSlider($id){
+        $sliders=slider::find($id);
+        return view('admin.slider.editSlider',compact('sliders'));
+    }
+
+    public function UpdateSlider(Request $request, $id){
+        $old_image=$request->old_image;
+
+        $slider_image=$request->file('image');
+
+        if($slider_image){
+            $name_generate=hexdec(uniqid());
+            $img_ext=strtolower($slider_image->getClientOriginalExtension());
+            $img_name=$name_generate.'.'.$img_ext;
+            $up_location='image/slider/';
+            $last_img=$up_location.$img_name;
+            $slider_image->move($up_location,$img_name);
+    
+            unlink($old_image);
+            slider::find($id)->update([
+                'title'=>$request->title,
+                'description'=>$request->description,
+                'image'=>$last_img,
+                'created_at'=>Carbon::now()
+            ]);
+            return Redirect()->route('home.slider');
+            }
+            else{
+                slider::find($id)->update([
+                    'title'=>$request->title,
+                    'description'=>$request->description,
+                    'created_at'=>Carbon::now()
+                ]);
+                return Redirect()->route('home.slider');
+            }
+    }
+
+}
